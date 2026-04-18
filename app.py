@@ -7,29 +7,29 @@ from streamlit_folium import st_folium
 import folium
 import io
 
+# 1. Page Config
 st.set_page_config(page_title="Amira Weather Pro", layout="wide")
 
-# Memory
+# 2. State Management
 if "closet" not in st.session_state: st.session_state.closet = {"Hot":[], "Cold":[], "Normal":[]}
 if "city_mem" not in st.session_state: st.session_state.city_mem = None
 if "data_mem" not in st.session_state: st.session_state.data_mem = None
 
-# Language Mapping (Voice code, display name)
-LANGS = {"en": "English", "fr": "Français", "ar": "العربية", "es": "Español", "de": "Deutsch"}
-
+# 3. Helper Functions
 def load_lottie(url):
     try: return requests.get(url, timeout=5).json()
     except: return None
 
-def speak(text, lang_code):
+def speak(text, lang='en'):
     try:
-        tts = gTTS(text=text, lang=lang_code)
+        tts = gTTS(text=text, lang=lang)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         return fp
     except: return None
 
 def apply_ui(city):
+    # Dynamic Unsplash background based on city monument
     bg = f"https://source.unsplash.com/featured/?{city},monument" if city else "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1600"
     st.markdown(f"""
         <style>
@@ -45,32 +45,34 @@ def apply_ui(city):
         </style>
     """, unsafe_allow_html=True)
 
+# 4. App UI
 apply_ui(st.session_state.city_mem)
 st.markdown("<h1 style='text-align: center;'>🌡️ Amira's Weather Station Pro</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("👤 AI Settings")
-    # NEW: Language Selector
-    lang_name = st.selectbox("🌐 App Language:", list(LANGS.values()))
-    lang_code = [k for k, v in LANGS.items() if v == lang_name][0]
+    st.header("🌍 AI Settings")
+    lang_choice = st.selectbox("Language / لغة", ["English", "Français", "العربية", "Español"])
+    lang_map = {"English": "en", "Français": "fr", "العربية": "ar", "Español": "es"}
+    lang_code = lang_map[lang_choice]
     
     gender = st.radio("Style Preference:", ["Feminine", "Masculine"])
     st.divider()
     st.subheader("📸 Virtual Closet")
     up = st.file_uploader("Upload clothing:", type=['jpg', 'png'])
-    cat = st.selectbox("Weather Category:", ["Hot", "Normal", "Cold"])
+    cat = st.selectbox("Category:", ["Hot", "Normal", "Cold"])
     if st.button("Save to Closet"):
         if up: st.session_state.closet[cat].append(up); st.success("Saved!")
 
-city_in = st.text_input("🌍 Search City...", placeholder="e.g. Casablanca")
-if st.button("🚀 Run AI Analysis"):
+# 5. Search Logic
+city_in = st.text_input("🌍 Enter City Name...", placeholder="e.g. Casablanca")
+if st.button("🚀 Analyze Weather"):
     if city_in:
-        # We tell the engine which language we want for the weather description
-        data = WeatherEngine().get_weather(f"{city_in}?lang={lang_code}")
+        data = WeatherEngine().get_weather(city_in)
         if "error" not in data:
             st.session_state.city_mem, st.session_state.data_mem = city_in, data
             st.rerun()
 
+# 6. Display Results
 if st.session_state.city_mem and st.session_state.data_mem:
     d = st.session_state.data_mem['current_condition'][0]
     temp, feel = int(d['temp_C']), int(d['FeelsLikeC'])
@@ -79,42 +81,41 @@ if st.session_state.city_mem and st.session_state.data_mem:
 
     st.markdown("<div class='glass'>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1.2])
+    
     with c1:
-        url = "https://lottie.host/8593a436-e630-4e31-893c-2384976c6696/vKAnK2FmQp.json" if temp > 22 else "https://lottie.host/80182885-3e28-4ce0-8c29-37365c1f03d2/y0eH95Ua26.json"
-        l = load_lottie(url)
-        if l: st_lottie(l, height=180, key="anim")
+        # Dynamic Animation
+        anim_url = "https://lottie.host/8593a436-e630-4e31-893c-2384976c6696/vKAnK2FmQp.json" if temp > 22 else "https://lottie.host/80182885-3e28-4ce0-8c29-37365c1f03d2/y0eH95Ua26.json"
+        l = load_lottie(anim_url)
+        if l: st_lottie(l, height=180, key="weather_anim")
         st.metric(st.session_state.city_mem.capitalize(), f"{temp}°C", f"Feels like {feel}°C")
+        
     with c2:
-        st.write(f"☀️ **UV:** {d.get('uvIndex')} | 💧 **Hum:** {d.get('humidity')}%")
+        st.write(f"☀️ **UV Index:** {d.get('uvIndex')}")
         st.write(f"🌬️ **Condition:** {desc}")
         
-        # --- OUTFIT LOGIC WITH TRANSLATION FALLBACK ---
+        # Translation Logic
         w_cat = "Hot" if temp > 25 else "Cold" if temp < 15 else "Normal"
-        
-        # Basic translation logic for suggestions
-        suggestions = {
-            "en": {"Hot": "a sundress" if gender == "Feminine" else "shorts", "Cold": "a coat", "Normal": "a jacket"},
-            "fr": {"Hot": "une robe d'été" if gender == "Feminine" else "un short", "Cold": "un manteau", "Normal": "une veste"},
-            "ar": {"Hot": "فستان صيفي" if gender == "Feminine" else "شورت", "Cold": "معطف دافئ", "Normal": "سترة خفيفة"},
-            "es": {"Hot": "un vestido" if gender == "Feminine" else "pantalones cortos", "Cold": "un abrigo", "Normal": "una chaqueta"}
+        sug_map = {
+            "en": {"Hot": "a sundress" if gender == "Feminine" else "shorts", "Cold": "a warm coat", "Normal": "a jacket"},
+            "fr": {"Hot": "une robe" if gender == "Feminine" else "un short", "Cold": "un manteau", "Normal": "une veste"},
+            "ar": {"Hot": "فستان خفيف", "Cold": "معطف ثقيل", "Normal": "سترة خفيفة"},
+            "es": {"Hot": "un vestido", "Cold": "un abrigo", "Normal": "una chaqueta"}
         }
+        sug = sug_map.get(lang_code, sug_map["en"])[w_cat]
         
-        sug = suggestions.get(lang_code, suggestions["en"])[w_cat]
-        st.info(f"💡 AI Suggestion: {sug}")
-        
-        # VOICE IN SELECTED LANGUAGE
-        voice_text = f"{st.session_state.city_mem}. {desc}. {sug}."
-        audio = speak(voice_text, lang_code)
+        st.info(f"💡 Amira Suggests: {sug}")
+        audio = speak(f"{st.session_state.city_mem}. {desc}. {sug}.", lang_code)
         if audio: st.audio(audio)
 
     with c3:
         m = folium.Map(location=[lat, lon], zoom_start=11)
         folium.Marker([lat, lon]).add_to(m)
-        st_folium(m, height=180, width=320, key="map")
+        st_folium(m, height=200, width=350, key="city_map")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # Wardrobe Display
     if st.session_state.closet[w_cat]:
-        st.subheader("🧥 Closet:")
+        st.subheader("🧥 Picked from your Closet:")
         cols = st.columns(4)
         for i, img in enumerate(st.session_state.closet[w_cat]):
             cols[i % 4].image(img, use_column_width=True)
