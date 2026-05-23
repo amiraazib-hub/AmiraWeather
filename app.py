@@ -173,4 +173,4 @@ if st.session_state.city_mem and st.session_state.data_mem:
     # 8. MARRAKESH TOUR GUIDE ECOSYSTEM
     if st.session_state.tour_guide:
         st.divider()
-        st.
+        
