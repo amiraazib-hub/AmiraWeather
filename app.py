@@ -1,6 +1,6 @@
 ﻿
 # 4. HUGE MULTI-TIER A-TO-Z MOROCCAN REGISTRY DATA
-TOUR_DATABASE = 
+TOUR_DATABASE = []
     # === PLACES TO EAT ===
     {"name": "Al Fassia Fine Dining", "cat": "🍽️ Restaurants & Dining", "sub": "Traditional Moroccan Restaurants", "lat": 31.6362, "lon": -8.0091, "city": "Marrakesh", "desc": "Fine dining run entirely by women, specializing in slow-cooked chicken, lamb tagines, and pastilla.", "steps": "Head into Gueliz, pass the plaza junction, turn right past the boulevard palm alignment."},
     {"name": "Bacha Coffee Room", "cat": "🍽️ Restaurants & Dining", "sub": "Cafés, Coffee & Bakeries", "lat": 31.6258, "lon": -7.9899, "city": "Marrakesh", "desc": "Stunning historical coffee palace offering over 200 varieties of premium coffee origins inside a palace room.", "steps": "Enter Dar El Bacha palace museum, proceed past the courtyard columns straight to the reservation room entrance."},
