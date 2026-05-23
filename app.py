@@ -3,8 +3,19 @@ import requests
 from streamlit_lottie import st_lottie
 from engine import WeatherEngine
 from gtts import gTTS
-from streamlit_folium import st_folium
-import folium
+from streamlit_folium import st_folium# Dynamic Array Sorting and Distance Calculations Matrix
+    processed_list = []
+    for place in TOUR_DATABASE:
+        if place["cat"] == selected_cat and place["city"] == selected_city:
+            is_sub_match = (selected_sub in ["All Culinary Spots", "All Monuments", "All Retail Options"]) or (place["sub"] == selected_sub)
+            
+            if is_sub_match:
+                dist = calculate_distance(u_lat, u_lon, place["lat"], place["lon"])
+                updated_place = place.copy()
+                updated_place["distance"] = dist
+                processed_list.append(updated_place)
+                
+    sorted_destinations = sorted(processed_list, key=lambda x: x["distance"])import folium
 import io
 import math
 from PIL import Image
@@ -223,4 +234,56 @@ else:
                 dist = calculate_distance(u_lat, u_lon, place["lat"], place["lon"])
                 updated_place = place.copy()
                 updated_place["distance"] = dist
-                processed_list.append(
+                processed_list.append(updated_place)
+                
+    sorted_destinations = sorted(processed_list, key=lambda x: x["distance"])
+
+    st.markdown("### 📍 Nearest Places Found (Alphabetical A-to-Z Database Sorted by Proximity)")
+    display_names = [f"{p['name']} — 📏 {p['distance']:.2f} km away" for p in sorted_destinations]
+    
+    if display_names:
+        selection = st.selectbox("Choose a specific landmark to calculate routing path vectors:", display_names)
+        selected_idx = display_names.index(selection)
+        active_target = sorted_destinations[selected_idx]
+        st.session_state.selected_destination = active_target
+    else:
+        st.warning(f"No custom data points registered for '{selected_sub}' inside {selected_city} yet. Try shifting back to 'All Options' or changing cities!")
+        st.session_state.selected_destination = None
+
+    # 5. ROUTING ENVIRONMENT & DIRECTION OUTPUT ENGINE
+    if st.session_state.selected_destination:
+        target = st.session_state.selected_destination
+        st.divider()
+        st.subheader(f"🗺️ Active Real-Time Route Vectors: {target['name']}")
+        
+        c_nav1, c_nav2 = st.columns([1.2, 1])
+        with c_nav1:
+            st.markdown(f"**ℹ️ Overview:** {target['desc']}")
+            st.markdown(f"**🏁 Total Travel Distance:** `{target['distance']:.3f} Kilometers`")
+            st.error(f"🛰️ **Automated Route Directions:** {target['steps']}")
+            
+            nav_speech_text = f"Route calculations complete for {target['name']}. Current separation metric is {target['distance']:.2f} kilometers. Proceed according to the following route: {target['steps']}"
+            nav_audio_file = speak(nav_speech_text, lang_code)
+            if nav_audio_file:
+                st.audio(nav_audio_file)
+                
+        with c_nav2:
+            m_guide = folium.Map(location=[u_lat, u_lon], zoom_start=13)
+            
+            folium.Marker([u_lat, u_lon], tooltip="Your Active Smartphone GPS Pin", icon=folium.Icon(color='blue', icon='user')).add_to(m_guide)
+            folium.Marker([target['lat'], target['lon']], tooltip=target['name'], icon=folium.Icon(color='red', icon='flag')).add_to(m_guide)
+            folium.PolyLine(locations=[[u_lat, u_lon], [target['lat'], target['lon']]], color='#06b6d4', weight=6, opacity=0.85).add_to(m_guide)
+            
+            st_folium(m_guide, height=300, width=450, key="live_navigation_map")
+
+# 8. Render Closet Assets
+st.divider()
+st.subheader("🧥 Active Weather Wardrobe View")
+current_cat = "Normal" if "data_mem" not in st.session_state or not st.session_state.data_mem else ("Hot" if int(st.session_state.data_mem['current_condition'][0]['temp_C']) > 25 else "Cold" if int(st.session_state.data_mem['current_condition'][0]['temp_C']) < 15 else "Normal")
+items = st.session_state.closet[current_cat]
+if items:
+    cols = st.columns(4)
+    for idx, img in enumerate(items):
+        cols[idx % 4].image(img, use_container_width=True)
+else:
+    st.caption("No clothes uploaded for this weather condition category yet.")
