@@ -1,24 +1,4 @@
-﻿import streamlit as st
-import requests
-from streamlit_lottie import st_lottie
-from engine import WeatherEngine
-from gtts import gTTS
-from streamlit_folium import st_folium
-import folium
-import io
-import math
-from PIL import Image
-
-# 1. Page Config
-st.set_page_config(page_title="Amira Weather Pro", layout="wide")
-
-# 2. State Management System
-if "closet" not in st.session_state:
-    st.session_state.closet = {"Hot": [], "Normal": [], "Cold": []}
-if "city_mem" not in st.session_state: st.session_state.city_mem = "Casablanca"
-if "data_mem" not in st.session_state: st.session_state.data_mem = None
-if "tour_guide" not in st.session_state: st.session_state.tour_guide = False
-if "selected_destination" not in st.session_state: st.session_state.selected_destination = None
+﻿# data.py
 
 # COMPLETE GEOLOCATION ANCHOR REGISTRY
 CITY_ANCHORS = {
@@ -33,16 +13,7 @@ CITY_ANCHORS = {
     "Dakhla": {"lat": 23.6848, "lon": -15.9579}
 }
 
-# 3. Distance Calculation Engine (Haversine Formula)
-def calculate_distance(lat1, lon1, lat2, lon2):
-    R = 6371.0 
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-# 4. MASTER A-TO-Z MOROCCAN REGISTRY DATA
+# MASTER A-TO-Z MOROCCAN REGISTRY DATA
 TOUR_DATABASE = [
     # === PLACES TO EAT ===
     {"name": "Al Fassia Fine Dining", "cat": "🍽️ Restaurants & Dining", "sub": "Traditional Moroccan Restaurants", "lat": 31.6362, "lon": -8.0091, "city": "Marrakesh", "desc": "Fine dining run entirely by women, specializing in slow-cooked chicken, lamb tagines, and pastilla.", "steps": "Head into Gueliz, pass the plaza junction, turn right past the boulevard palm alignment."},
@@ -58,4 +29,28 @@ TOUR_DATABASE = [
     {"name": "Nomad Terrace Lounge", "cat": "🍽️ Restaurants & Dining", "sub": "Traditional Moroccan Restaurants", "lat": 31.6272, "lon": -7.9881, "city": "Marrakesh", "desc": "Modern twist on Moroccan classics with highly popular rooftop seating views looking over the medina rooftops.", "steps": "Proceed across the spice square market plaza, climb the multi-tiered terracotta stairs."},
     {"name": "Rick's Café Casablanca", "cat": "🍽️ Restaurants & Dining", "sub": "Traditional Moroccan Restaurants", "lat": 33.6062, "lon": -7.6210, "city": "Casablanca", "desc": "World-famous thematic restaurant meticulously designed to copy the jazz piano lounge from the movie Casablanca.", "steps": "Follow Boulevard de la Corniche, turn right past the ancient white port gateway entrance arch."},
     
-    # ===
+    # === HISTORICAL MONUMENTS ===
+    {"name": "Bahia Palace Courtyard", "cat": "🏛️ Monuments & Sightseeing", "sub": "Palaces & Historical Houses", "lat": 31.6218, "lon": -7.9817, "city": "Marrakesh", "desc": "Grand 19th-century vizier palace featuring breathtaking marble courtyards, stained glass panels, and painted wood.", "steps": "From the Mellah perimeter area, follow Rue Riad Zitoun el Jdid directly to the structural gate."},
+    {"name": "Bab Bou Jeloud (Blue Gate)", "cat": "🏛️ Monuments & Sightseeing", "sub": "Ancient Gates & Medina Walls", "lat": 34.0617, "lon": -4.9829, "city": "Fes", "desc": "The iconic, majestic blue-tiled gateway arch forming the historical entrance into the ancient Fes Medina.", "steps": "Arrive at the primary taxi loop plaza drop-off zone, the massive decorated archway will be directly ahead."},
+    {"name": "Chefchaouen Outa El Hammam", "cat": "🏛️ Monuments & Sightseeing", "sub": "Scenic Streets & Plazas", "lat": 35.1689, "lon": -5.2631, "city": "Chefchaouen", "desc": "The central square street corridor completely surrounded by world-renowned blue-washed homes.", "steps": "Enter through Bab El Ain gate structure, follow the rising blue cobblestone paths upward."},
+    {"name": "Hassan II Mosque Pavilion", "cat": "🏛️ Monuments & Sightseeing", "sub": "Mosques & Spiritual Sites", "lat": 33.6087, "lon": -7.6327, "city": "Casablanca", "desc": "One of the world's most spectacular mosques, standing dramatically over the open waves of the Atlantic.", "steps": "Follow Avenue Sidi Mohammed Ben Abdallah directly West onto the vast beachfront stone plaza."},
+    {"name": "Hassan Red Minaret Tower", "cat": "🏛️ Monuments & Sightseeing", "sub": "Mosques & Spiritual Sites", "lat": 34.0242, "lon": -6.8227, "city": "Rabat", "desc": "The historic sandstone tower standing tall next to stone columns from an unfinished 12th-century empire mosque.", "steps": "Drive up Boulevard Mohamed Lyazidi, walk through the gated structural archaeology park zone."},
+    {"name": "Kasbah of the Udayas", "cat": "🏛️ Monuments & Sightseeing", "sub": "Palaces & Historical Houses", "lat": 34.0321, "lon": -6.8362, "city": "Rabat", "desc": "Ancient, fortified blue-and-white clifftop neighborhood built overlooking where the river meets the sea.", "steps": "Climb the grand stone staircase entry point directly off the main shoreline avenue."},
+    {"name": "Koutoubia Mosque Tower", "cat": "🏛️ Monuments & Sightseeing", "sub": "Mosques & Spiritual Sites", "lat": 31.6238, "lon": -7.9936, "city": "Marrakesh", "desc": "The grand historical tower standing as the tallest and most iconic skyline marker across Marrakesh.", "steps": "Walk West out of the central spice plaza clearing, proceed straight through the palm tree gardens lane."},
+    {"name": "Mahkama du Pacha", "cat": "🏛️ Monuments & Sightseeing", "sub": "Palaces & Historical Houses", "lat": 33.5801, "lon": -7.6042, "city": "Casablanca", "desc": "An absolute masterpiece of Moorish architecture serving as a court building with breathtaking stucco carvings.", "steps": "Head deep into the Habous Quarter, look for the large wooden palace doors opposite the olive souk."},
+    {"name": "Majorelle Botanical Sanctuary", "cat": "🏛️ Monuments & Sightseeing", "sub": "Scenic Streets & Plazas", "lat": 31.6318, "lon": -8.0033, "city": "Marrakesh", "desc": "A beautiful landscape garden collection featuring giant cacti and cobalt-blue cubist villa structures.", "steps": "Travel down Avenue Yacoub El Mansour into Gueliz, enter via the primary ticketing lane gate."},
+    {"name": "Volubilis Roman Ruins", "cat": "🏛️ Monuments & Sightseeing", "sub": "Palaces & Historical Houses", "lat": 34.0733, "lon": -5.5544, "city": "Meknes", "desc": "Ancient archaeological preservation zone displaying beautifully preserved Roman mosaics.", "steps": "Take the main rural route North past Moulay Idriss Zerhoun, arrive directly at the visitor center entrance pavilion."},
+
+    # === SHOPPING & ESSENTIALS ===
+    {"name": "Asima Central Provisioner", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Supermarkets & Groceries", "lat": 33.5905, "lon": -7.6012, "city": "Casablanca", "desc": "Modern department supermarket stocking fresh regional produce, packaged goods, and daily essentials.", "steps": "Proceed down Boulevard Mohamed V, locate the retail spaces right past the tram railway terminal arch."},
+    {"name": "Anfa Wellness Pharmacy Hub", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Pharmacies & Health Services", "lat": 33.5852, "lon": -7.6234, "city": "Casablanca", "desc": "Comprehensive medical center stocking essential travel healthcare goods, wellness supplies, and baby products.", "steps": "Walk past the main Anfa financial block, the pharmacy storefront sits adjacent to the primary bank tower."},
+    {"name": "Carrefour Market Marrakesh", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Supermarkets & Groceries", "lat": 31.6342, "lon": -8.0122, "city": "Marrakesh", "desc": "Large Western-style convenience supermarket providing international foods, tracking goods, and grocery products.", "steps": "Navigate to the lower baseline floor inside the Carré Eden shopping complex in the Gueliz district."},
+    {"name": "Gold Souk Jewelry Alley", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Jewelry Boutique Shops", "lat": 31.6279, "lon": -7.9895, "city": "Marrakesh", "desc": "Specialized market lane filled with master crafters designing silver bracelets, fine rings, and amber bead items.", "steps": "Walk deep into the middle junctions of Souk Semmarine, take a right hand turn past the carpet arches lane."},
+    {"name": "Habous Olive & Craft Souk", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Souks & Bazaars", "lat": 33.5790, "lon": -7.6030, "city": "Casablanca", "desc": "Beautiful traditional market neighborhood famous for rows of organic spices, olives, and tailored Moroccan fabrics.", "steps": "Walk past the main square arcade gates, take a right into the stone tunnel corridor lane."},
+    {"name": "Morocco Mall Global Retail", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Malls & Modern Retail", "lat": 33.5760, "lon": -7.7083, "city": "Casablanca", "desc": "Mega commercial modern mall featuring international luxury fashion boutiques, food courts, and tech stores.", "steps": "Drive down the main beachfront ring road Southwest, turn directly into the multi-level customer parking portal."},
+    {"name": "Marjane Shopping Complex", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Malls & Modern Retail", "lat": 30.4012, "lon": -9.5634, "city": "Agadir", "desc": "Giant hypermarket offering electronics, household items, affordable clothing, luggage, and a pharmacy.", "steps": "Follow Avenue Mohammed V directly inland toward the primary metropolitan highway loop junction."},
+    {"name": "Socco Alto Luxury Gold", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Jewelry Boutique Shops", "lat": 33.5899, "lon": -7.6155, "city": "Casablanca", "desc": "Modern premium jeweler collection showcasing luxury gold watches, authentic Moroccan silver, and wedding bands.", "steps": "Take the main elevator to the second floor retail tier inside the commercial center."},
+    {"name": "Souk Semmarine Fabric Bazaars", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Souks & Bazaars", "lat": 31.6285, "lon": -7.9892, "city": "Marrakesh", "desc": "The primary historical marketplace route packing thousands of kaftans, leather shoes, lamps, and spices.", "steps": "From Jemaa El Fna northern exit, walk directly into the tall, iron-roofed historical covered arcade lane."},
+    {"name": "Souk El Henna Herbalists", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Souks & Bazaars", "lat": 31.6268, "lon": -7.9888, "city": "Marrakesh", "desc": "An ancient open courtyard square specializing in pure argan oils, natural cosmetics, soaps, and traditional henna plants.", "steps": "Follow the narrow alleyway leading past the old hospital structures straight into the brick courtyard center."},
+    {"name": "Tangier Ville Harbor Station Shop", "cat": "🛒 Shopping, Markets & Essentials", "sub": "Pharmacies & Health Services", "lat": 35.7865, "lon": -5.8012, "city": "Tangier", "desc": "Multi-purpose travel center providing local internet SIM cards, chargers, water bottles, and quick snacks.", "steps": "Proceed straight into the main high-speed passenger port lobby hall building, row position number 4."}
+]
